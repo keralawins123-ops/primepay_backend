@@ -1,24 +1,64 @@
-const nodemailer = require('nodemailer');
+// const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+// const transporter = nodemailer.createTransport({
+//   host: process.env.EMAIL_HOST,
+//   port: process.env.EMAIL_PORT,
+//   secure: false,
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
+
+// const sendEmail = async ({ to, subject, html }) => {
+//   const mailOptions = {
+//     from: process.env.EMAIL_FROM,
+//     to,
+//     subject,
+//     html,
+//   };
+//   return await transporter.sendMail(mailOptions);
+// };
+
+
+
+const { SendMailClient } = require("zeptomail");
+
+require('dotenv').config();
+
+
+const client = new SendMailClient({
+    url: "https://api.zeptomail.in/v1.1/email",
+    token: process.env.ZEPTO_USER
 });
 
 const sendEmail = async ({ to, subject, html }) => {
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html,
-  };
-  return await transporter.sendMail(mailOptions);
+    try {
+        const response = await client.sendMail({
+            from: {
+                address: process.env.EMAIL_FROM,
+                name: process.env.EMAIL_FROM_NAME 
+            },
+            to: [
+                {
+                    email_address: {
+                        address: to
+                    }
+                }
+            ],
+            subject,
+            htmlbody: html
+        });
+
+        return response;
+    } catch (error) {
+        console.error("ZeptoMail Error:", error);
+        throw error;
+    }
 };
+
+
+
 
 const emailTemplates = {
   verifyEmail: (name, token) => ({

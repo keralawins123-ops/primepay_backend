@@ -1,23 +1,30 @@
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
+const path = require('path');
 
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = 'uploads/misc';
-    if (req.uploadType === 'proof')      folder = 'uploads/proofs';
-    else if (req.uploadType === 'task')  folder = 'uploads/tasks';
-    else if (req.uploadType === 'qr')    folder = 'uploads/qr';
-    ensureDir(folder);
-    cb(null, folder);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    let folder = 'madepay/misc';
+    if (req.uploadType === 'proof')      folder = 'madepay/proofs';
+    else if (req.uploadType === 'task')  folder = 'madepay/tasks';
+    else if (req.uploadType === 'qr')    folder = 'madepay/qr';
+
+    const format = path.extname(file.originalname).substring(1).toLowerCase();
+    
+    return {
+      folder: folder,
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
+      public_id: `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+    };
   },
 });
 

@@ -1,5 +1,5 @@
-const jwt     = require('jsonwebtoken');
-const User    = require('../models/User');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 const { errorResponse } = require('../utils/helpers');
 
 // Protect routes — must be logged in
@@ -12,10 +12,10 @@ exports.protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user    = await User.findById(decoded.id).populate('wallet');
-    if (!user)           return errorResponse(res, 'User not found.', 401);
-    if (user.isBlocked)  return errorResponse(res, 'Your account has been blocked.', 403);
-    if (!user.isActive)  return errorResponse(res, 'Your account is deactivated.', 403);
+    const user = await User.findById(decoded.id).populate('wallet');
+    if (!user) return errorResponse(res, 'User not found.', 401);
+    if (user.isBlocked) return errorResponse(res, 'Your account has been blocked.', 403);
+    if (!user.isActive) return errorResponse(res, 'Your account is deactivated.', 403);
     req.user = user;
     next();
   } catch (err) {

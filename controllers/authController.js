@@ -1,161 +1,211 @@
-const jwt     = require('jsonwebtoken');
-const crypto  = require('crypto');
-const User    = require('../models/User');
-const Wallet  = require('../models/Wallet');
-const { generateToken, generateOTP, successResponse, errorResponse } = require('../utils/helpers');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const User = require('../models/User');
+const Otp = require('../models/Otp');
+const Wallet = require('../models/Wallet');
+const { generateOTP, successResponse, errorResponse } = require('../utils/helpers');
 const { sendEmail, emailTemplates } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
-// POST /api/auth/register
-exports.register = async (req, res) => {
-  try {
-    const { fullName, phoneNumber, email, password } = req.body;
+/* ─────────────────────────────────────────────────────────────
+   FLOW:
+   1. POST /api/auth/send-otp  { email }
+      → look up user by email
+      → always send OTP to that email (whether user exists or not,
+        so we don't leak which emails are registered)
+      → respond with { userExists: true/false }
+        so frontend knows whether to show Login or Register screen
 
-    const existing = await User.findOne({ $or: [{ email }, { phoneNumber }] });
-    if (existing) {
-      if (existing.email === email)
-        return errorResponse(res, 'Email already registered.', 409);
-      return errorResponse(res, 'Phone number already registered.', 409);
-    }
+   2a. If userExists = true  →  POST /api/auth/verify-otp  { email, otp }
+       → verify OTP → login → return JWT
 
-    const verificationToken   = generateToken();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+   2b. If userExists = false →  POST /api/auth/register  { fullName, phoneNumber, email, otp }
+       → verify OTP first → create user + wallet → return JWT
+───────────────────────────────────────────────────────────── */
 
-    const user = await User.create({
-      fullName,
-      phoneNumber,
-      email,
-      password,
-      emailVerificationToken:   verificationToken,
-      emailVerificationExpires: verificationExpires,
-    });
 
-    // Create wallet
-    const wallet = await Wallet.create({ user: user._id });
-    user.wallet  = wallet._id;
-    await user.save({ validateBeforeSave: false });
-
-    // Send verification email
-    try {
-      const tmpl = emailTemplates.verifyEmail(fullName, verificationToken);
-      await sendEmail({ to: email, ...tmpl });
-    } catch (emailErr) {
-      console.error('Email send error:', emailErr.message);
-    }
-
-    await createNotification(user._id, 'Welcome!', `Welcome to WalletApp, ${fullName}! Please verify your email.`, 'registration');
-
-    return successResponse(res, { userId: user._id }, 'Registration successful! Please check your email to verify your account.', 201);
-  } catch (err) {
-    return errorResponse(res, err.message);
-  }
-};
-
-// GET /api/auth/verify-email/:token
-exports.verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.params;
-    const user = await User.findOne({
-      emailVerificationToken:   token,
-      emailVerificationExpires: { $gt: new Date() },
-    });
-    if (!user) return errorResponse(res, 'Invalid or expired verification link.', 400);
-
-    user.isEmailVerified            = true;
-    user.emailVerificationToken     = undefined;
-    user.emailVerificationExpires   = undefined;
-    await user.save({ validateBeforeSave: false });
-
-    return successResponse(res, null, 'Email verified successfully! You can now log in.');
-  } catch (err) {
-    return errorResponse(res, err.message);
-  }
-};
-
-// POST /api/auth/send-otp   { emailOrPhone }
+// ── STEP 1 ──────────────────────────────────────────────────
+// POST /api/auth/send-otp
+// Body: { email }
 exports.sendOtp = async (req, res) => {
   try {
-    const { emailOrPhone } = req.body;
-    const user = await User.findOne({
-      $or: [{ email: emailOrPhone }, { phoneNumber: emailOrPhone }],
-    });
-    if (!user)                   return errorResponse(res, 'No account found.', 404);
-    if (!user.isEmailVerified)   return errorResponse(res, 'Please verify your email first.', 403);
-    if (user.isBlocked)          return errorResponse(res, 'Your account is blocked.', 403);
+    const { email } = req.body;
+    if (!email) return errorResponse(res, 'Email is required.', 400);
 
-    const otp        = generateOTP();
-    user.otp         = otp;
-    user.otpExpires  = new Date(Date.now() + 10 * 60 * 1000); // 10 min
-    await user.save({ validateBeforeSave: false });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
+    // Block check — only if user exists
+    if (user && user.isBlocked) return errorResponse(res, 'Your account has been blocked. Contact support.', 403);
+    if (user && !user.isActive) return errorResponse(res, 'Your account is deactivated. Contact support.', 403);
+
+    // Generate OTP
+    const plainOtp = generateOTP(); // 6-digit string
+
+    console.log('plainOtp:', plainOtp);
+    // Remove any existing OTP for this identifier then save new one
+    await Otp.deleteMany({ identifier: normalizedEmail });
+
+    const otpDoc = new Otp({ identifier: normalizedEmail, otpHash: plainOtp });
+    await otpDoc.save(); // pre-save hook hashes the OTP
+
+    // Send email
     try {
-      const tmpl = emailTemplates.otpEmail(user.fullName, otp);
-      await sendEmail({ to: user.email, ...tmpl });
+      const name = user?.fullName || 'User';
+      const tmpl = emailTemplates.otpEmail(name, plainOtp);
+      await sendEmail({ to: normalizedEmail, ...tmpl });
     } catch (emailErr) {
-      console.error('OTP email error:', emailErr.message);
+      console.error('OTP email send error:', emailErr.message);
+      // Still respond — don't fail the request because of email
     }
 
-    return successResponse(res, null, 'OTP sent to your registered email.');
+    return successResponse(res, {
+      userExists: !!user,
+    }, `OTP sent to ${normalizedEmail}.`);
+
   } catch (err) {
     return errorResponse(res, err.message);
   }
 };
 
-// POST /api/auth/verify-otp  { emailOrPhone, otp }
+
+// ── STEP 2a (existing user) ──────────────────────────────────
+// POST /api/auth/verify-otp
+// Body: { email, otp }
 exports.verifyOtp = async (req, res) => {
   try {
-    const { emailOrPhone, otp } = req.body;
-    const user = await User.findOne({
-      $or: [{ email: emailOrPhone }, { phoneNumber: emailOrPhone }],
-      otp,
-      otpExpires: { $gt: new Date() },
-    }).populate('wallet');
+    const { email, otp } = req.body;
+    if (!email || !otp) return errorResponse(res, 'Email and OTP are required.', 400);
 
-    if (!user) return errorResponse(res, 'Invalid or expired OTP.', 401);
+    const normalizedEmail = email.toLowerCase().trim();
 
-    user.otp        = undefined;
-    user.otpExpires = undefined;
-    await user.save({ validateBeforeSave: false });
+    // Find OTP document
+    const otpDoc = await Otp.findOne({ identifier: normalizedEmail });
+    if (!otpDoc) return errorResponse(res, 'OTP expired or not found. Please request a new one.', 401);
+
+    // Verify hash
+    const isMatch = await otpDoc.verifyOtp(otp.toString());
+    if (!isMatch) return errorResponse(res, 'Invalid OTP.', 401);
+
+    // OTP is valid — delete it (one-time use)
+    await Otp.deleteMany({ identifier: normalizedEmail });
+
+    // Find user
+    const user = await User.findOne({ email: normalizedEmail }).populate('wallet');
+    if (!user) return errorResponse(res, 'No account found with this email. Please register.', 404);
+    if (user.isBlocked) return errorResponse(res, 'Your account has been blocked.', 403);
+    if (!user.isActive) return errorResponse(res, 'Your account is deactivated.', 403);
 
     const token = signToken(user._id);
     return successResponse(res, {
       token,
       user: {
-        id:        user._id,
-        fullName:  user.fullName,
-        email:     user.email,
-        phone:     user.phoneNumber,
-        role:      user.role,
-        walletId:  user.wallet?._id,
-        balance:   user.wallet?.balance,
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        wallet: {
+          id: user.wallet?._id,
+          balance: user.wallet?.balance || 0,
+          totalCredited: user.wallet?.totalCredited || 0,
+          totalDebited: user.wallet?.totalDebited || 0,
+        },
       },
     }, 'Login successful.');
+
   } catch (err) {
     return errorResponse(res, err.message);
   }
 };
+
+
+// ── STEP 2b (new user) ───────────────────────────────────────
+// POST /api/auth/register
+// Body: { fullName, phoneNumber, email, otp }
+exports.register = async (req, res) => {
+  try {
+    const { fullName, phoneNumber, email } = req.body;
+    if (!fullName || !phoneNumber || !email )
+      return errorResponse(res, 'fullName, phoneNumber and email are all required.', 400);
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // ── Verify OTP first ────────────────────────────────────
+    // const otpDoc = await Otp.findOne({ identifier: normalizedEmail });
+    // if (!otpDoc) return errorResponse(res, 'OTP expired or not found. Please request a new one.', 401);
+
+    // const isMatch = await otpDoc.verifyOtp(otp.toString());
+    // if (!isMatch) return errorResponse(res, 'Invalid OTP.', 401);
+
+    // OTP valid — delete it
+    // await Otp.deleteMany({ identifier: normalizedEmail });
+
+    // ── Check duplicates ────────────────────────────────────
+    const emailExists = await User.findOne({ email: normalizedEmail });
+    if (emailExists) return errorResponse(res, 'An account with this email already exists. Please login.', 409);
+
+    const phoneExists = await User.findOne({ phoneNumber: phoneNumber.trim() });
+    if (phoneExists) return errorResponse(res, 'This phone number is already registered.', 409);
+
+    // ── Create user ─────────────────────────────────────────
+    const user = await User.create({ fullName, phoneNumber: phoneNumber.trim(), email: normalizedEmail });
+    const wallet = await Wallet.create({ user: user._id });
+    user.wallet = wallet._id;
+    await user.save();
+
+    // Welcome notification
+    await createNotification(
+      user._id,
+      'Welcome to WalletApp! 🎉',
+      `Hi ${fullName}, your account is ready. Start exploring!`,
+      'registration',
+    );
+
+    const token = signToken(user._id);
+    return successResponse(res, {
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        wallet: {
+          id: wallet._id,
+          balance: 0,
+          totalCredited: 0,
+          totalDebited: 0,
+        },
+      },
+    }, 'Account created successfully!', 201);
+
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
 
 // GET /api/auth/me
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('wallet');
     return successResponse(res, {
-      id:              user._id,
-      fullName:        user.fullName,
-      email:           user.email,
-      phoneNumber:     user.phoneNumber,
-      role:            user.role,
-      isEmailVerified: user.isEmailVerified,
-      isActive:        user.isActive,
-      registeredAt:    user.registeredAt,
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      isActive: user.isActive,
+      registeredAt: user.registeredAt,
       wallet: {
-        id:            user.wallet?._id,
-        balance:       user.wallet?.balance,
-        totalCredited: user.wallet?.totalCredited,
-        totalDebited:  user.wallet?.totalDebited,
+        id: user.wallet?._id,
+        balance: user.wallet?.balance || 0,
+        totalCredited: user.wallet?.totalCredited || 0,
+        totalDebited: user.wallet?.totalDebited || 0,
       },
     });
   } catch (err) {
@@ -163,13 +213,23 @@ exports.getMe = async (req, res) => {
   }
 };
 
+
 // PUT /api/auth/update-profile
 exports.updateProfile = async (req, res) => {
   try {
     const { fullName, phoneNumber } = req.body;
     const updates = {};
-    if (fullName)    updates.fullName    = fullName;
+    if (fullName) updates.fullName = fullName;
     if (phoneNumber) updates.phoneNumber = phoneNumber;
+
+    if (!Object.keys(updates).length)
+      return errorResponse(res, 'Nothing to update.', 400);
+
+    // Check phone uniqueness if changing
+    if (phoneNumber) {
+      const exists = await User.findOne({ phoneNumber, _id: { $ne: req.user._id } });
+      if (exists) return errorResponse(res, 'Phone number already in use.', 409);
+    }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
     return successResponse(res, { fullName: user.fullName, phoneNumber: user.phoneNumber }, 'Profile updated.');
