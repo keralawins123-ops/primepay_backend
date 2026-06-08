@@ -64,6 +64,7 @@ exports.sendOtp = async (req, res) => {
 
     return successResponse(res, {
       userExists: !!user,
+      otp : plainOtp
     }, `OTP sent to ${normalizedEmail}.`);
 
   } catch (err) {
