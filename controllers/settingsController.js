@@ -84,17 +84,42 @@ exports.updatePaymentMethods = async (req, res) => {
 };
 
 // GET /api/payment-methods  (user view — only enabled)
+// exports.getPaymentMethods = async (req, res) => {
+//   try {
+//     const s   = await getOrCreate();
+//     const out = {};
+//     if (s.paymentMethods.qrCode.enabled)      out.qrCode      = s.paymentMethods.qrCode;
+//     if (s.paymentMethods.bankAccount.enabled) out.bankAccount = s.paymentMethods.bankAccount;
+//     return successResponse(res, out);
+//   } catch (err) {
+//     return errorResponse(res, err.message);
+//   }
+// };
+
 exports.getPaymentMethods = async (req, res) => {
   try {
-    const s   = await getOrCreate();
-    const out = {};
-    if (s.paymentMethods.qrCode.enabled)      out.qrCode      = s.paymentMethods.qrCode;
-    if (s.paymentMethods.bankAccount.enabled) out.bankAccount = s.paymentMethods.bankAccount;
+    const s = await getOrCreate();
+
+    const out = {
+      bank: s.paymentMethods.bankAccount.enabled,
+      upi: s.paymentMethods.qrCode.enabled,
+    };
+
+    if (s.paymentMethods.qrCode.enabled) {
+      out.qrCode = s.paymentMethods.qrCode;
+    }
+
+    if (s.paymentMethods.bankAccount.enabled) {
+      out.bankAccount = s.paymentMethods.bankAccount;
+    }
+
     return successResponse(res, out);
   } catch (err) {
     return errorResponse(res, err.message);
   }
 };
+
+
 
 // Contacts
 // GET /api/contacts
