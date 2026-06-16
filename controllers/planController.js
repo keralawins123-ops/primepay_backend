@@ -24,8 +24,8 @@ exports.getAllPlans = async (req, res) => {
 // POST /api/admin/plans
 exports.createPlan = async (req, res) => {
   try {
-    const { name, amount, description } = req.body;
-    const plan = await Plan.create({ name, amount, description });
+    const { name, amount, description , incomeOnApproval} = req.body;
+    const plan = await Plan.create({ name, amount, description , incomeOnApproval });
     return successResponse(res, plan, 'Plan created.', 201);
   } catch (err) {
     return errorResponse(res, err.message);

@@ -26,6 +26,7 @@ app.use('/api/plans',         require('./routes/plan'));
 app.use('/api/tasks',         require('./routes/task'));
 app.use('/api/gift-codes',    require('./routes/giftCode'));
 app.use('/api/notifications', require('./routes/notification'));
+app.use('/api/referral',      require('./routes/referral'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api',               require('./routes/settings'));
 

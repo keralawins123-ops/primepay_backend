@@ -14,6 +14,10 @@ const planSchema = new mongoose.Schema({
   description: {
     type: String,
   },
+  incomeOnApproval: {
+    type: Number,
+    default: 4,
+  },
   isActive: {
     type: Boolean,
     default: true,

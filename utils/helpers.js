@@ -10,6 +10,16 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+
+const generateReferralCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+};
+
+
+
 // Standard API response helpers
 const successResponse = (res, data, message = 'Success', statusCode = 200) => {
   return res.status(statusCode).json({
@@ -107,4 +117,5 @@ module.exports = {
   paginate,
   creditWallet,
   debitWallet,
+  generateReferralCode
 };

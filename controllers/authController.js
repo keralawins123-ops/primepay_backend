@@ -3,12 +3,31 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
 const Wallet = require('../models/Wallet');
-const { generateOTP, successResponse, errorResponse } = require('../utils/helpers');
+const { generateOTP, generateReferralCode, successResponse, errorResponse } = require('../utils/helpers');
 const { sendEmail, emailTemplates } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+
+
+const buildUserPayload = (user, wallet) => ({
+  id:          user._id,
+  fullName:    user.fullName,
+  email:       user.email,
+  phoneNumber: user.phoneNumber,
+  role:        user.role,
+  referralCode: user.referralCode,
+  referredBy:  user.referredBy,
+  wallet: {
+    id:            wallet?._id,
+    balance:       wallet?.balance       || 0,
+    totalCredited: wallet?.totalCredited || 0,
+    totalDebited:  wallet?.totalDebited  || 0,
+  },
+});
+
+
 
 /* ─────────────────────────────────────────────────────────────
    FLOW:
@@ -64,7 +83,7 @@ exports.sendOtp = async (req, res) => {
 
     return successResponse(res, {
       userExists: !!user,
-      otp : plainOtp
+      otp: plainOtp
     }, `OTP sent to ${normalizedEmail}.`);
 
   } catch (err) {
@@ -103,19 +122,7 @@ exports.verifyOtp = async (req, res) => {
     const token = signToken(user._id);
     return successResponse(res, {
       token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        role: user.role,
-        wallet: {
-          id: user.wallet?._id,
-          balance: user.wallet?.balance || 0,
-          totalCredited: user.wallet?.totalCredited || 0,
-          totalDebited: user.wallet?.totalDebited || 0,
-        },
-      },
+      user: buildUserPayload(user, user.wallet),
     }, 'Login successful.');
 
   } catch (err) {
@@ -129,8 +136,8 @@ exports.verifyOtp = async (req, res) => {
 // Body: { fullName, phoneNumber, email, otp }
 exports.register = async (req, res) => {
   try {
-    const { fullName, phoneNumber, email } = req.body;
-    if (!fullName || !phoneNumber || !email )
+    const { fullName, phoneNumber, email, referralCode } = req.body;
+    if (!fullName || !phoneNumber || !email)
       return errorResponse(res, 'fullName, phoneNumber and email are all required.', 400);
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -152,8 +159,41 @@ exports.register = async (req, res) => {
     const phoneExists = await User.findOne({ phoneNumber: phoneNumber.trim() });
     if (phoneExists) return errorResponse(res, 'This phone number is already registered.', 409);
 
+
+
+    // ── Resolve referral ──────────────────────────────────
+    let referredByUser = null;
+    let referralLevel2By = null;
+
+    if (referralCode) {
+      referredByUser = await User.findOne({ referralCode: referralCode.toUpperCase().trim() });
+      if (!referredByUser)
+        return errorResponse(res, 'Invalid referral code.', 400);
+
+      // Level 2: if the direct referrer was themselves referred by someone
+      if (referredByUser.referredBy) {
+        referralLevel2By = referredByUser.referredBy;
+      }
+    }
+
+    // ── Generate unique referral code for new user ────────
+    let newReferralCode, codeExists;
+    do {
+      newReferralCode = generateReferralCode();
+      codeExists = await User.findOne({ referralCode: newReferralCode });
+    } while (codeExists);
+
+
+
+
     // ── Create user ─────────────────────────────────────────
-    const user = await User.create({ fullName, phoneNumber: phoneNumber.trim(), email: normalizedEmail });
+    const user = await User.create({
+      fullName, phoneNumber: phoneNumber.trim(), email: normalizedEmail,
+      referralCode: newReferralCode,
+      referredBy: referredByUser?._id || null,
+      referralLevel2By: referralLevel2By || null,
+
+    });
     const wallet = await Wallet.create({ user: user._id });
     user.wallet = wallet._id;
     await user.save();
@@ -162,26 +202,14 @@ exports.register = async (req, res) => {
     await createNotification(
       user._id,
       'Welcome to WalletApp! 🎉',
-      `Hi ${fullName}, your account is ready. Start exploring!`,
+      `Hi ${fullName}, your account is ready. Your referral code is ${newReferralCode}.`,
       'registration',
     );
 
     const token = signToken(user._id);
     return successResponse(res, {
       token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        role: user.role,
-        wallet: {
-          id: wallet._id,
-          balance: 0,
-          totalCredited: 0,
-          totalDebited: 0,
-        },
-      },
+      user: buildUserPayload(user, wallet),
     }, 'Account created successfully!', 201);
 
   } catch (err) {
@@ -200,6 +228,9 @@ exports.getMe = async (req, res) => {
       email: user.email,
       phoneNumber: user.phoneNumber,
       role: user.role,
+      referralCode: user.referralCode,
+      referredBy: user.referredBy,
+      referralLevel2By: user.referralLevel2By,
       isActive: user.isActive,
       registeredAt: user.registeredAt,
       wallet: {

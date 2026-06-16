@@ -1,9 +1,9 @@
-const Deposit     = require('../models/Deposit');
-const Wallet      = require('../models/Wallet');
+const Deposit = require('../models/Deposit');
+const Wallet = require('../models/Wallet');
 const Transaction = require('../models/Transaction');
 const { successResponse, errorResponse, paginate, creditWallet } = require('../utils/helpers');
-const { createNotification, notifyAdmins }                       = require('../utils/notifications');
-const { sendEmail, emailTemplates }                               = require('../utils/email');
+const { createNotification, notifyAdmins } = require('../utils/notifications');
+const { sendEmail, emailTemplates } = require('../utils/email');
 
 // POST /api/deposits  (multipart/form-data)
 exports.createDeposit = async (req, res) => {
@@ -12,10 +12,10 @@ exports.createDeposit = async (req, res) => {
     if (!req.file) return errorResponse(res, 'Payment proof is required.', 400);
 
     const deposit = await Deposit.create({
-      user:           req.user._id,
-      plan:           planId || undefined,
-      amount:         Number(amount),
-      paymentProof:   req.file.path,
+      user: req.user._id,
+      plan: planId || undefined,
+      amount: Number(amount),
+      paymentProof: req.file.path,
       transactionRef,
     });
 
@@ -49,9 +49,9 @@ exports.getAllDeposits = async (req, res) => {
     const filter = {};
     if (status) filter.status = status;
 
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
       Deposit.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit)
@@ -70,22 +70,34 @@ exports.getAllDeposits = async (req, res) => {
 exports.approveDeposit = async (req, res) => {
   try {
     const deposit = await Deposit.findById(req.params.id).populate('user');
-    if (!deposit)                    return errorResponse(res, 'Deposit not found.', 404);
+    if (!deposit) return errorResponse(res, 'Deposit not found.', 404);
     if (deposit.status !== 'pending') return errorResponse(res, 'Deposit already processed.', 400);
 
-    deposit.status     = 'approved';
+
+    const plan = deposit.plan;
+
+    // ── Calculate bonus ────────────────────────────────────
+    const incomeAmount = plan.incomeOnApproval > 0
+      ? Math.round((plan.amount * plan.incomeOnApproval) / 100 * 100) / 100
+      : 0;
+    const totalCredit = plan.amount + incomeAmount;
+
+
+    deposit.status = 'approved';
     deposit.approvedBy = req.user._id;
     deposit.approvedAt = new Date();
+    deposit.incomeAmount = incomeAmount;
+    deposit.totalCreditedOnApproval = totalCredit;
     await deposit.save();
 
     // Credit wallet
     const user = await require('../models/User').findById(deposit.user).populate('wallet');
-    await creditWallet(Wallet, Transaction, user._id, user.wallet._id, deposit.amount, 'deposit', `Deposit #${deposit._id} approved`);
+    await creditWallet(Wallet, Transaction, user._id, user.wallet._id, totalCredit, 'deposit', `Deposit #${deposit._id} approved`);
 
     // Notify user
-    await createNotification(user._id, 'Deposit Approved', `Your deposit of ₹${deposit.amount} has been approved.`, 'deposit_approved');
+    await createNotification(user._id, 'Deposit Approved', `Your deposit of ₹${totalCredit} has been approved.`, 'deposit_approved');
     try {
-      const tmpl = emailTemplates.depositApproved(user.fullName, deposit.amount);
+      const tmpl = emailTemplates.depositApproved(user.fullName, totalCredit);
       await sendEmail({ to: user.email, ...tmpl });
     } catch (e) { /* non-fatal */ }
 
@@ -100,10 +112,10 @@ exports.rejectDeposit = async (req, res) => {
   try {
     const { reason } = req.body;
     const deposit = await Deposit.findById(req.params.id).populate('user');
-    if (!deposit)                    return errorResponse(res, 'Deposit not found.', 404);
+    if (!deposit) return errorResponse(res, 'Deposit not found.', 404);
     if (deposit.status !== 'pending') return errorResponse(res, 'Deposit already processed.', 400);
 
-    deposit.status    = 'rejected';
+    deposit.status = 'rejected';
     deposit.adminNote = reason;
     await deposit.save();
 

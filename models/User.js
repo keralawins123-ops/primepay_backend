@@ -37,6 +37,26 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref:  'Wallet',
   },
+
+
+  // ── Referral ──────────────────────────────────────────────
+  referralCode: {
+    type:   String,
+    unique: true,
+    uppercase: true,
+  },
+  referredBy: {               // direct referrer (Level 1 upline)
+    type: mongoose.Schema.Types.ObjectId,
+    ref:  'User',
+    default: null,
+  },
+  referralLevel2By: {         // level-2 upline (referrer of referrer)
+    type: mongoose.Schema.Types.ObjectId,
+    ref:  'User',
+    default: null,
+  },
+
+  
   registeredAt: {
     type:    Date,
     default: Date.now,
