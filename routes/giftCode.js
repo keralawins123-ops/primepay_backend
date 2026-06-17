@@ -2,11 +2,14 @@ const express = require('express');
 const router  = express.Router();
 const { protect, adminOnly } = require('../middleware/auth');
 const {
-  getAllGiftCodes, createGiftCode, updateGiftCode, deleteGiftCode, toggleGiftCode, redeemGiftCode,
+  getAllGiftCodes, createGiftCode, updateGiftCode, deleteGiftCode,  getActiveGiftCodes, toggleGiftCode, redeemGiftCode,
 } = require('../controllers/giftCodeController');
 
 // User
 router.post('/redeem', protect, redeemGiftCode);
+
+router.get('/active',      protect,         getActiveGiftCodes);
+
 
 // Admin
 router.get('/admin',              protect, adminOnly, getAllGiftCodes);

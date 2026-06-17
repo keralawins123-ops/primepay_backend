@@ -20,6 +20,15 @@ const generateReferralCode = () => {
 
 
 
+const generateUserId = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+};
+
+
+
 // Standard API response helpers
 const successResponse = (res, data, message = 'Success', statusCode = 200) => {
   return res.status(statusCode).json({
@@ -117,5 +126,6 @@ module.exports = {
   paginate,
   creditWallet,
   debitWallet,
-  generateReferralCode
+  generateReferralCode,
+  generateUserId
 };

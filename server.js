@@ -29,6 +29,7 @@ app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/referral',      require('./routes/referral'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api',               require('./routes/settings'));
+app.use('/api/upi',           require('./routes/upiRoutes'));
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', app: process.env.APP_NAME, time: new Date() }));

@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
 const Wallet = require('../models/Wallet');
-const { generateOTP, generateReferralCode, successResponse, errorResponse } = require('../utils/helpers');
+const { generateOTP, generateReferralCode,generateUserId, successResponse, errorResponse } = require('../utils/helpers');
 const { sendEmail, emailTemplates } = require('../utils/email');
 const { createNotification } = require('../utils/notifications');
 
@@ -14,6 +14,7 @@ const signToken = (id) =>
 const buildUserPayload = (user, wallet) => ({
   id:          user._id,
   fullName:    user.fullName,
+  userId:      user.userId,
   email:       user.email,
   phoneNumber: user.phoneNumber,
   role:        user.role,
@@ -163,6 +164,9 @@ exports.register = async (req, res) => {
 
     // ── Resolve referral ──────────────────────────────────
     let referredByUser = null;
+    let userId = generateUserId();
+
+     
     let referralLevel2By = null;
 
     if (referralCode) {
@@ -188,7 +192,9 @@ exports.register = async (req, res) => {
 
     // ── Create user ─────────────────────────────────────────
     const user = await User.create({
-      fullName, phoneNumber: phoneNumber.trim(), email: normalizedEmail,
+      fullName, phoneNumber: phoneNumber.trim(),
+      userId ,
+      email: normalizedEmail,
       referralCode: newReferralCode,
       referredBy: referredByUser?._id || null,
       referralLevel2By: referralLevel2By || null,
@@ -225,6 +231,7 @@ exports.getMe = async (req, res) => {
     return successResponse(res, {
       id: user._id,
       fullName: user.fullName,
+      userId: user.userId,
       email: user.email,
       phoneNumber: user.phoneNumber,
       role: user.role,

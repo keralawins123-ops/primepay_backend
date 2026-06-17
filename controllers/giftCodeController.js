@@ -66,6 +66,34 @@ exports.toggleGiftCode = async (req, res) => {
   }
 };
 
+
+
+
+// GET /api/gift-codes/active
+exports.getActiveGiftCodes = async (req, res) => {
+  try {
+    const now = new Date();
+
+    const giftCodes = await GiftCode.find({
+      isActive: true,
+      expiryDate: { $gt: now },
+      $expr: { $lt: ['$usedCount', '$maxUsers'] }
+    })
+      .select('code rewardAmount expiryDate maxUsers usedCount')
+      .sort({ createdAt: -1 });
+
+    return successResponse(
+      res,
+      giftCodes,
+      'Active gift codes fetched successfully.'
+    );
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+
+
 // POST /api/gift-codes/redeem  { code }
 exports.redeemGiftCode = async (req, res) => {
   try {
