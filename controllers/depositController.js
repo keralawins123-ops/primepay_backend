@@ -4,16 +4,18 @@ const Transaction = require('../models/Transaction');
 const { successResponse, errorResponse, paginate, creditWallet } = require('../utils/helpers');
 const { createNotification, notifyAdmins } = require('../utils/notifications');
 const { sendEmail, emailTemplates } = require('../utils/email');
+const Plan = require('../models/Plan');
 
 // POST /api/deposits  (multipart/form-data)
 exports.createDeposit = async (req, res) => {
   try {
     const { planId, amount, transactionRef } = req.body;
+    console.log(req.body)
     if (!req.file) return errorResponse(res, 'Payment proof is required.', 400);
 
     const deposit = await Deposit.create({
       user: req.user._id,
-      plan: planId || undefined,
+      plan: planId,
       amount: Number(amount),
       paymentProof: req.file.path,
       transactionRef,
@@ -22,7 +24,7 @@ exports.createDeposit = async (req, res) => {
     const User = require('../models/User');
     await notifyAdmins(User, require('../models/Notification'), 'New Deposit Request', `${req.user.fullName} submitted a deposit of ₹${amount}.`, 'admin_alert');
 
-    return successResponse(res, { depositId: deposit._id }, 'Deposit submitted. Awaiting approval.', 201);
+    return successResponse(res, { depositId: deposit }, 'Deposit submitted. Awaiting approval.', 201);
   } catch (err) {
     return errorResponse(res, err.message);
   }
@@ -69,18 +71,21 @@ exports.getAllDeposits = async (req, res) => {
 // PUT /api/admin/deposits/:id/approve
 exports.approveDeposit = async (req, res) => {
   try {
-    const deposit = await Deposit.findById(req.params.id).populate('user');
+    const deposit = await Deposit.findById(req.params.id);
     if (!deposit) return errorResponse(res, 'Deposit not found.', 404);
     if (deposit.status !== 'pending') return errorResponse(res, 'Deposit already processed.', 400);
 
 
-    const plan = deposit.plan;
+    const plan = await Plan.findById(deposit.plan);
+
 
     // ── Calculate bonus ────────────────────────────────────
     const incomeAmount = plan.incomeOnApproval > 0
       ? Math.round((plan.amount * plan.incomeOnApproval) / 100 * 100) / 100
       : 0;
     const totalCredit = plan.amount + incomeAmount;
+
+    console.log("hello deposit ", incomeAmount);
 
 
     deposit.status = 'approved';

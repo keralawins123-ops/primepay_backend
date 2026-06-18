@@ -1,8 +1,8 @@
-const GiftCode    = require('../models/GiftCode');
-const Wallet      = require('../models/Wallet');
+const GiftCode = require('../models/GiftCode');
+const Wallet = require('../models/Wallet');
 const Transaction = require('../models/Transaction');
 const { successResponse, errorResponse, creditWallet } = require('../utils/helpers');
-const { createNotification }                           = require('../utils/notifications');
+const { createNotification } = require('../utils/notifications');
 
 // GET /api/admin/gift-codes
 exports.getAllGiftCodes = async (req, res) => {
@@ -97,13 +97,13 @@ exports.getActiveGiftCodes = async (req, res) => {
 // POST /api/gift-codes/redeem  { code }
 exports.redeemGiftCode = async (req, res) => {
   try {
-    const { code }  = req.body;
-    const gift      = await GiftCode.findOne({ code: code.toUpperCase() });
+    const { code } = req.body;
+    const gift = await GiftCode.findOne({ code: code.toUpperCase() });
 
-    if (!gift)                               return errorResponse(res, 'Invalid gift code.', 404);
-    if (!gift.isActive)                      return errorResponse(res, 'Gift code is disabled.', 400);
-    if (gift.expiryDate < new Date())        return errorResponse(res, 'Gift code has expired.', 400);
-    if (gift.usedCount >= gift.maxUsers)     return errorResponse(res, 'Gift code usage limit reached.', 400);
+    if (!gift) return errorResponse(res, 'Invalid gift code.', 404);
+    if (!gift.isActive) return errorResponse(res, 'Gift code is disabled.', 400);
+    if (gift.expiryDate < new Date()) return errorResponse(res, 'Gift code has expired.', 400);
+    if (gift.usedCount >= gift.maxUsers) return errorResponse(res, 'Gift code usage limit reached.', 400);
     if (gift.usedBy.includes(req.user._id)) return errorResponse(res, 'You have already redeemed this code.', 409);
 
     gift.usedBy.push(req.user._id);
