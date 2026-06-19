@@ -28,33 +28,33 @@ require('dotenv').config();
 
 
 const client = new SendMailClient({
-    url: "https://api.zeptomail.in/v1.1/email",
-    token: process.env.ZEPTO_USER
+  url: "https://api.zeptomail.in/v1.1/email",
+  token: "Zoho-enczapikey PHtE6r0LQe7sjGR5+hMGsKOxRcenNtgqqO5hLAJA5IsTD/ALGk0Dr9AtxmO0rhgiU/JAF/7Iyo49trmYu7+HIz6/MD5PWmqyqK3sx/VYSPOZsbq6x00ft1gedE3aUYDmddNt1SzVu9reNA=="
 });
 
 const sendEmail = async ({ to, subject, html }) => {
-    try {
-        const response = await client.sendMail({
-            from: {
-                address: process.env.EMAIL_FROM,
-                name: process.env.EMAIL_FROM_NAME 
-            },
-            to: [
-                {
-                    email_address: {
-                        address: to
-                    }
-                }
-            ],
-            subject,
-            htmlbody: html
-        });
+  try {
+    const response = await client.sendMail({
+      from: {
+        address: "noreply@mdpay.info",
+        name: "mdpay"
+      },
+      to: [
+        {
+          email_address: {
+            address: to
+          }
+        }
+      ],
+      subject,
+      htmlbody: html
+    });
 
-        return response;
-    } catch (error) {
-        console.error("ZeptoMail Error:", error);
-        throw error;
-    }
+    return response;
+  } catch (error) {
+    console.error("ZeptoMail Error:", error);
+    throw error;
+  }
 };
 
 
@@ -62,10 +62,10 @@ const sendEmail = async ({ to, subject, html }) => {
 
 const emailTemplates = {
   verifyEmail: (name, token) => ({
-    subject: 'Verify Your Email - WalletApp',
+    subject: 'Verify Your Email - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
-        <h2 style="color:#4F46E5;">Welcome to WalletApp, ${name}!</h2>
+        <h2 style="color:#4F46E5;">Welcome to MDPay, ${name}!</h2>
         <p>Please verify your email address to activate your account.</p>
         <a href="${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email/${token}"
            style="background:#4F46E5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0;">
@@ -77,7 +77,7 @@ const emailTemplates = {
   }),
 
   otpEmail: (name, otp) => ({
-    subject: 'Your OTP - WalletApp',
+    subject: 'Your OTP - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#4F46E5;">Login OTP</h2>
@@ -89,7 +89,7 @@ const emailTemplates = {
   }),
 
   depositApproved: (name, amount) => ({
-    subject: 'Deposit Approved - WalletApp',
+    subject: 'Deposit Approved - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#16A34A;">Deposit Approved!</h2>
@@ -99,7 +99,7 @@ const emailTemplates = {
   }),
 
   depositRejected: (name, amount, reason) => ({
-    subject: 'Deposit Rejected - WalletApp',
+    subject: 'Deposit Rejected - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#DC2626;">Deposit Rejected</h2>
@@ -110,7 +110,7 @@ const emailTemplates = {
   }),
 
   withdrawalApproved: (name, amount) => ({
-    subject: 'Withdrawal Approved - WalletApp',
+    subject: 'Withdrawal Approved - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#16A34A;">Withdrawal Approved!</h2>
@@ -120,7 +120,7 @@ const emailTemplates = {
   }),
 
   withdrawalRejected: (name, amount, reason) => ({
-    subject: 'Withdrawal Rejected - WalletApp',
+    subject: 'Withdrawal Rejected - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#DC2626;">Withdrawal Rejected</h2>
@@ -131,7 +131,7 @@ const emailTemplates = {
   }),
 
   taskApproved: (name, taskTitle, reward) => ({
-    subject: 'Task Approved - WalletApp',
+    subject: 'Task Approved - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#16A34A;">Task Approved!</h2>
@@ -142,7 +142,7 @@ const emailTemplates = {
   }),
 
   taskRejected: (name, taskTitle, reason) => ({
-    subject: 'Task Rejected - WalletApp',
+    subject: 'Task Rejected - MDPay',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#DC2626;">Task Rejected</h2>

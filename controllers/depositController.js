@@ -76,8 +76,12 @@ exports.approveDeposit = async (req, res) => {
     if (deposit.status !== 'pending') return errorResponse(res, 'Deposit already processed.', 400);
 
 
-    const plan = await Plan.findById(deposit.plan);
+  
+    console.log("deposit.plan", deposit.plan )
 
+     const plan = await Plan.findById(deposit.plan);
+
+    console.log("plan", plan)
 
     // ── Calculate bonus ────────────────────────────────────
     const incomeAmount = plan.incomeOnApproval > 0
