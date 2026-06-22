@@ -20,6 +20,6 @@ router.get('/admin/payment-methods',          protect, adminOnly, getPaymentMeth
 router.put('/admin/payment-methods/enable',   protect, adminOnly, enablePaymentType);
 router.put('/admin/payment-methods/:id',      protect, adminOnly, updatePaymentMethod);
 router.delete('/admin/payment-methods/:id',   protect, adminOnly, deletePaymentMethod);
- router.get('/admin/payment-methods/status',   protect, adminOnly, getPaymentStatus);
+router.get('/admin/payment-methods/status',   protect, adminOnly, getPaymentStatus);
 
 module.exports = router;

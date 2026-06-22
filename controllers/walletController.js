@@ -1,5 +1,6 @@
 const Wallet      = require('../models/Wallet');
 const Transaction = require('../models/Transaction');
+const Deposit     = require('../models/Deposit');
 const { successResponse, errorResponse, paginate, creditWallet, debitWallet } = require('../utils/helpers');
 
 // GET /api/wallet
@@ -7,11 +8,23 @@ exports.getWallet = async (req, res) => {
   try {
     const wallet = await Wallet.findOne({ user: req.user._id });
     if (!wallet) return errorResponse(res, 'Wallet not found.', 404);
+
+    // Calculate total and pending rewards
+    const [pendingDeposits, approvedDeposits] = await Promise.all([
+      Deposit.find({ user: req.user._id, status: 'pending' }),
+      Deposit.find({ user: req.user._id, status: 'approved' }),
+    ]);
+
+    const pendingRewards = pendingDeposits.reduce((sum, d) => sum + (d.incomeAmount || 0), 0);
+    const totalRewards = approvedDeposits.reduce((sum, d) => sum + (d.incomeAmount || 0), 0);
+
     return successResponse(res, {
       id:            wallet._id,
       balance:       wallet.balance,
       totalCredited: wallet.totalCredited,
       totalDebited:  wallet.totalDebited,
+      totalRewards,
+      pendingRewards,
     });
   } catch (err) {
     return errorResponse(res, err.message);

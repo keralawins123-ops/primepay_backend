@@ -13,12 +13,24 @@ exports.createDeposit = async (req, res) => {
     console.log(req.body)
     if (!req.file) return errorResponse(res, 'Payment proof is required.', 400);
 
+    // Calculate income amount for pending rewards
+    let incomeAmount = 0;
+    if (planId) {
+      const plan = await Plan.findById(planId);
+      if (plan) {
+        incomeAmount = plan.incomeOnApproval > 0
+          ? Math.round((Number(amount) * plan.incomeOnApproval) / 100 * 100) / 100
+          : 0;
+      }
+    }
+
     const deposit = await Deposit.create({
       user: req.user._id,
       plan: planId,
       amount: Number(amount),
       paymentProof: req.file.path,
       transactionRef,
+      incomeAmount,
     });
 
     const User = require('../models/User');

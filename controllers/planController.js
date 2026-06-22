@@ -4,7 +4,7 @@ const { successResponse, errorResponse } = require('../utils/helpers');
 // GET /api/plans  (public for users — active only)
 exports.getPlans = async (req, res) => {
   try {
-    const plans = await Plan.find({ isActive: true }).sort({ amount: 1 });
+    const plans = await Plan.find({ isActive: true }).sort({ createdAt: -1 });
     return successResponse(res, plans);
   } catch (err) {
     return errorResponse(res, err.message);
@@ -24,8 +24,8 @@ exports.getAllPlans = async (req, res) => {
 // POST /api/admin/plans
 exports.createPlan = async (req, res) => {
   try {
-    const { name, amount, description , incomeOnApproval} = req.body;
-    const plan = await Plan.create({ name, amount, description , incomeOnApproval });
+    const { name, amount, description, incomeOnApproval } = req.body;
+    const plan = await Plan.create({ name, amount, description, incomeOnApproval });
     return successResponse(res, plan, 'Plan created.', 201);
   } catch (err) {
     return errorResponse(res, err.message);
