@@ -12,10 +12,10 @@ const withdrawalSchema = new mongoose.Schema({
     min: 1,
   },
   bankDetails: {
-    accountHolderName: { type: String, required: true },
-    bankName:          { type: String, required: true },
-    accountNumber:     { type: String, required: true },
-    ifscCode:          { type: String, required: true },
+    accountHolderName: { type: String },
+    bankName:          { type: String },
+    accountNumber:     { type: String },
+    ifscCode:          { type: String },
     upiId:             { type: String },
   },
   status: {
@@ -32,6 +32,14 @@ const withdrawalSchema = new mongoose.Schema({
   },
   approvedAt: {
     type: Date,
+  },
+  adminInitiated: {
+    type: Boolean,
+    default: false,
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
   },
 }, { timestamps: true });
 

@@ -1,9 +1,55 @@
 const Withdrawal  = require('../models/Withdrawal');
 const Wallet      = require('../models/Wallet');
 const Transaction = require('../models/Transaction');
+const User        = require('../models/User');
 const { successResponse, errorResponse, paginate, debitWallet } = require('../utils/helpers');
 const { createNotification, notifyAdmins }                      = require('../utils/notifications');
 const { sendEmail, emailTemplates }                              = require('../utils/email');
+
+// POST /api/admin/withdrawals/make
+exports.adminMakeWithdrawal = async (req, res) => {
+  try {
+    const { userId, amount, bankDetails } = req.body;
+    const admin = req.user;
+
+    // Find target user
+    const user = await User.findById(userId);
+    if (!user) return errorResponse(res, 'User not found.', 404);
+
+    // Check balance
+    const wallet = await Wallet.findById(user.wallet);
+    if (!wallet || wallet.balance < amount)
+      return errorResponse(res, 'Insufficient wallet balance.', 400);
+
+    // Create withdrawal
+    const withdrawal = await Withdrawal.create({
+      user: user._id,
+      amount,
+      bankDetails: bankDetails || {},
+      status: 'approved',
+      approvedBy: admin._id,
+      approvedAt: new Date(),
+      adminInitiated: true,
+      createdBy: admin._id,
+    });
+
+    // Debit wallet
+    await debitWallet(Wallet, Transaction, user._id, wallet._id, amount, 'withdrawal', `Admin-initiated withdrawal - ₹${amount}`);
+
+    // Create notification
+    await createNotification(user._id, 'Withdrawal Processed', `A withdrawal of ₹${amount} has been processed from your wallet by admin.`, 'admin_withdrawal');
+
+    // Send email
+    try {
+      const tmpl = emailTemplates.adminInitiatedWithdrawal(user.fullName, amount);
+      await sendEmail({ to: user.email, ...tmpl });
+    } catch (e) { /* non-fatal */ }
+
+    return successResponse(res, { withdrawalId: withdrawal._id }, 'Withdrawal processed successfully.', 201);
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
 
 // POST /api/withdrawals
 exports.createWithdrawal = async (req, res) => {
@@ -25,7 +71,6 @@ exports.createWithdrawal = async (req, res) => {
       bankDetails,
     });
 
-    const User = require('../models/User');
     await notifyAdmins(User, require('../models/Notification'), 'New Withdrawal Request', `${user.fullName} requested withdrawal of ₹${amount}.`, 'admin_alert');
 
     return successResponse(res, { withdrawalId: withdrawal._id }, 'Withdrawal request submitted.', 201);

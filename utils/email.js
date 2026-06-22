@@ -151,6 +151,16 @@ const emailTemplates = {
       </div>
     `,
   }),
+
+  adminInitiatedWithdrawal: (name, amount) => ({
+    subject: 'Withdrawal Processed - MDPay',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
+        <h2 style="color:#4F46E5;">Withdrawal Processed</h2>
+        <p>Hello ${name}, a withdrawal of <strong>₹${amount}</strong> has been processed from your wallet by admin.</p>
+      </div>
+    `,
+  }),
 };
 
 module.exports = { sendEmail, emailTemplates };

@@ -2,13 +2,14 @@ const express = require('express');
 const router  = express.Router();
 const { protect, adminOnly } = require('../middleware/auth');
 const {
-  createWithdrawal, getUserWithdrawals, getAllWithdrawals, approveWithdrawal, rejectWithdrawal,
+  createWithdrawal, getUserWithdrawals, getAllWithdrawals, approveWithdrawal, rejectWithdrawal, adminMakeWithdrawal,
 } = require('../controllers/withdrawalController');
 
 router.post('/', protect, createWithdrawal);
 router.get('/',  protect, getUserWithdrawals);
 
 router.get('/admin',             protect, adminOnly, getAllWithdrawals);
+router.post('/admin/make',       protect, adminOnly, adminMakeWithdrawal);
 router.put('/admin/:id/approve', protect, adminOnly, approveWithdrawal);
 router.put('/admin/:id/reject',  protect, adminOnly, rejectWithdrawal);
 
