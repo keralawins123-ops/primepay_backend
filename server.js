@@ -1,8 +1,8 @@
 require('dotenv').config();
-const express    = require('express');
-const cors       = require('cors');
-const path       = require('path');
-const connectDB  = require('./config/db');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const connectDB = require('./config/db');
 
 const app = express();
 
@@ -18,18 +18,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
-app.use('/api/auth',          require('./routes/auth'));
-app.use('/api/wallet',        require('./routes/wallet'));
-app.use('/api/deposits',      require('./routes/deposit'));
-app.use('/api/withdrawals',   require('./routes/withdrawal'));
-app.use('/api/plans',         require('./routes/plan'));
-app.use('/api/tasks',         require('./routes/task'));
-app.use('/api/gift-codes',    require('./routes/giftCode'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/wallet', require('./routes/wallet'));
+app.use('/api/deposits', require('./routes/deposit'));
+app.use('/api/withdrawals', require('./routes/withdrawal'));
+app.use('/api/plans', require('./routes/plan'));
+app.use('/api/tasks', require('./routes/task'));
+app.use('/api/gift-codes', require('./routes/giftCode'));
 app.use('/api/notifications', require('./routes/notification'));
-app.use('/api/referral',      require('./routes/referral'));
-app.use('/api/admin',         require('./routes/admin'));
-app.use('/api',               require('./routes/settings'));
-app.use('/api/upi',           require('./routes/upiRoutes'));
+app.use('/api/referral', require('./routes/referral'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api', require('./routes/settings'));
+app.use('/api/upi', require('./routes/upiRoutes'));
+app.use('/api/payment', require('./routes/adminPayment'));
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', app: process.env.APP_NAME, time: new Date() }));

@@ -21,20 +21,18 @@ const appSettingsSchema = new mongoose.Schema({
     type: String,
     default: '1.0.0',
   },
+  // ── Payment Methods Enable/Disable ────────────────────────
   paymentMethods: {
-    qrCode: {
-      enabled:  { type: Boolean, default: false },
-      imageUrl: { type: String, default: '' },
+    upiEnabled: {
+      type:    Boolean,
+      default: false,  // User sees admin UPI accounts if true
     },
-    bankAccount: {
-      enabled:       { type: Boolean, default: false },
-      accountHolder: { type: String, default: '' },
-      bankName:      { type: String, default: '' },
-      accountNumber: { type: String, default: '' },
-      ifscCode:      { type: String, default: '' },
-      upiId:         { type: String, default: '' },
+    bankEnabled: {
+      type:    Boolean,
+      default: false,  // User sees bank account if true
     },
   },
+
   contacts: [{
     type:     { type: String, enum: ['whatsapp', 'telegram', 'email', 'phone', 'website', 'support'] },
     label:    { type: String },

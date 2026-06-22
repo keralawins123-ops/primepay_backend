@@ -1,4 +1,5 @@
 const AppSettings = require('../models/AppSettings');
+const AdminPaymentMethod = require('../models/AdminPaymentMethod');
 const { successResponse, errorResponse } = require('../utils/helpers');
 
 const getOrCreate = async () => {
@@ -83,41 +84,55 @@ exports.updatePaymentMethods = async (req, res) => {
   }
 };
 
-// GET /api/payment-methods  (user view — only enabled)
-// exports.getPaymentMethods = async (req, res) => {
-//   try {
-//     const s   = await getOrCreate();
-//     const out = {};
-//     if (s.paymentMethods.qrCode.enabled)      out.qrCode      = s.paymentMethods.qrCode;
-//     if (s.paymentMethods.bankAccount.enabled) out.bankAccount = s.paymentMethods.bankAccount;
-//     return successResponse(res, out);
-//   } catch (err) {
-//     return errorResponse(res, err.message);
-//   }
-// };
 
+
+ // ════════════════════════════════════════════════════════════════
+// PAYMENT METHODS (User View)
+// ════════════════════════════════════════════════════════════════
+
+// GET /api/payment-methods  (user view — what they see during deposit/withdrawal)
 exports.getPaymentMethods = async (req, res) => {
   try {
     const s = await getOrCreate();
-
-    const out = {
-      bank: s.paymentMethods.bankAccount.enabled,
-      upi: s.paymentMethods.qrCode.enabled,
+    const response = {
+      upiEnabled:  s.paymentMethods.upiEnabled,
+      bankEnabled: s.paymentMethods.bankEnabled,
     };
 
-    if (s.paymentMethods.qrCode.enabled) {
-      out.qrCode = s.paymentMethods.qrCode;
+    // Get ONE active UPI if UPI is enabled
+    if (s.paymentMethods.upiEnabled) {
+      const upiMethods = await AdminPaymentMethod.find({ type: 'upi', isActive: true });
+      if (upiMethods.length > 0) {
+        // Round-robin: pick random to show different UPI each time
+        const idx = Math.floor(Math.random() * upiMethods.length);
+        response.upi = {
+          upiId:     upiMethods[idx].upiId,
+          payeeName: upiMethods[idx].upiPayeeName,
+        };
+      }
     }
 
-    if (s.paymentMethods.bankAccount.enabled) {
-      out.bankAccount = s.paymentMethods.bankAccount;
+    // Get ONE active Bank account if Bank is enabled
+    if (s.paymentMethods.bankEnabled) {
+      const bankMethods = await AdminPaymentMethod.find({ type: 'bank', isActive: true });
+      if (bankMethods.length > 0) {
+        const idx = Math.floor(Math.random() * bankMethods.length);
+        response.bank = {
+          accountHolderName: bankMethods[idx].accountHolderName,
+          bankName:          bankMethods[idx].bankName,
+          accountNumber:     bankMethods[idx].accountNumber,
+          ifscCode:          bankMethods[idx].ifscCode,
+        };
+      }
     }
 
-    return successResponse(res, out);
+    return successResponse(res, response);
   } catch (err) {
     return errorResponse(res, err.message);
   }
 };
+
+
 
 
 
