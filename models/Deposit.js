@@ -47,4 +47,7 @@ const depositSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+// Add compound unique index to prevent duplicate deposits per user and transactionRef
+depositSchema.index({ user: 1, transactionRef: 1 }, { unique: true });
+
 module.exports = mongoose.model('Deposit', depositSchema);

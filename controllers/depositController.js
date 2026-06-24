@@ -8,10 +8,22 @@ const Plan = require('../models/Plan');
 
 // POST /api/deposits  (multipart/form-data)
 exports.createDeposit = async (req, res) => {
+
+  console.log("calling create deposit", req.body);
+  
   try {
     const { planId, amount, transactionRef } = req.body;
     console.log(req.body)
     if (!req.file) return errorResponse(res, 'Payment proof is required.', 400);
+
+    // Check for existing deposit with same transactionRef for this user
+    const existingDeposit = await Deposit.findOne({ 
+      user: req.user._id, 
+      transactionRef 
+    });
+    if (existingDeposit) {
+      return errorResponse(res, 'Deposit with this transaction reference already exists.', 400);
+    }
 
     // Calculate income amount for pending rewards
     let incomeAmount = 0;
@@ -36,8 +48,12 @@ exports.createDeposit = async (req, res) => {
     const User = require('../models/User');
     await notifyAdmins(User, require('../models/Notification'), 'New Deposit Request', `${req.user.fullName} submitted a deposit of ₹${amount}.`, 'admin_alert');
 
-    return successResponse(res, { depositId: deposit }, 'Deposit submitted. Awaiting approval.', 201);
+    return successResponse(res, { depositId: deposit._id }, 'Deposit submitted. Awaiting approval.', 201);
   } catch (err) {
+    // Handle duplicate key error from unique index
+    if (err.code === 11000) {
+      return errorResponse(res, 'Deposit with this transaction reference already exists.', 400);
+    }
     return errorResponse(res, err.message);
   }
 };
