@@ -77,19 +77,19 @@ const creditWallet = async (Wallet, Transaction, userId, walletId, amount, type,
   wallet.totalCredited += amount;
   await wallet.save();
 
-  const txn = await Transaction.create({
-    user:          userId,
-    wallet:        walletId,
-    type,
-    amount,
-    balanceBefore,
-    balanceAfter:  wallet.balance,
-    status:        'completed',
-    description,
-    meta,
-  });
+  // const txn = await Transaction.create({
+  //   user:          userId,
+  //   wallet:        walletId,
+  //   type,
+  //   amount,
+  //   balanceBefore,
+  //   balanceAfter:  wallet.balance,
+  //   status:        'completed',
+  //   description,
+  //   meta,
+  // });
 
-  return { wallet, transaction: txn };
+  return { wallet,  };
 };
 
 // Debit wallet helper
