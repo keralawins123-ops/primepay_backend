@@ -111,7 +111,7 @@ exports.redeemGiftCode = async (req, res) => {
     await gift.save();
 
     const user = await require('../models/User').findById(req.user._id).populate('wallet');
-    // await creditWa859501llet(Wallet, Transaction, user._id, user.wallet._id, gift.rewardAmount, 'gift_reward', `Gift code redeemed: ${code}`);
+    await creditWallet(Wallet, Transaction, user._id, user.wallet._id, gift.rewardAmount, 'gift_reward', `Gift code redeemed: ${code}`);
 
     await createNotification(user._id, 'Gift Code Redeemed!', `You redeemed gift code ${code} and earned ₹${gift.rewardAmount}!`, 'gift_redeemed');
 
