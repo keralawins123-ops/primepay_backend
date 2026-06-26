@@ -58,6 +58,20 @@ exports.sendOtp = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail });
 
+
+     // User not found → don't send OTP
+    if (!user) {
+      return successResponse(
+        res,
+        {
+          userExists: false,
+        },
+        'Email not register.'
+      );
+    }
+
+
+
     // Block check — only if user exists
     if (user && user.isBlocked) return errorResponse(res, 'Your account has been blocked. Contact support.', 403);
     if (user && !user.isActive) return errorResponse(res, 'Your account is deactivated. Contact support.', 403);
