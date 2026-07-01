@@ -1,6 +1,7 @@
 const User               = require('../models/User');
 const ReferralCommission = require('../models/ReferralCommission');
 const { successResponse, errorResponse } = require('../utils/helpers');
+const Deposit = require('../models/Deposit');
 
 // GET /api/referral/my-team
 // Returns: user's referral code, direct referrals (L1), and their referrals (L2)
@@ -37,7 +38,7 @@ exports.getMyTeam = async (req, res) => {
 exports.getMyCommissions = async (req, res) => {
   try {
     const page  = parseInt(req.query.page)  || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 2000;
     const skip  = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
@@ -104,6 +105,114 @@ exports.getReferralStats = async (req, res) => {
     return errorResponse(res, err.message);
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ════════════════════════════════════════════════════════════════
+// NEW: GET /api/referral/team-deposits
+// Shows deposits from your 2-level team (L1 + L2)
+// Separate by referral level
+// ════════════════════════════════════════════════════════════════
+ 
+exports.getTeamDeposits = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const page  = parseInt(req.query.page)  || 1;
+    const limit = parseInt(req.query.limit) || 2000;
+    const skip  = (page - 1) * limit;
+ 
+    // Get my direct referrals (L1)
+    const level1Users = await User.find({ referredBy: userId }).select('_id');
+    const l1UserIds = level1Users.map(u => u._id);
+ 
+    // Get my indirect referrals (L2) — users referred by my L1 members
+    const level2Users = await User.find({ referredBy: { $in: l1UserIds } }).select('_id');
+    const l2UserIds = level2Users.map(u => u._id);
+ 
+    // Get all deposits from L1 and L2 users
+    const allTeamUserIds = [...l1UserIds, ...l2UserIds];
+ 
+    // Separate deposits by level
+    const [l1Deposits, l2Deposits] = await Promise.all([
+      Deposit.find({ user: { $in: l1UserIds } })
+        .sort({ createdAt: -1 })
+        .populate('user', 'fullName email referralCode')
+        .populate('plan', 'name amount')
+        .lean(),
+      Deposit.find({ user: { $in: l2UserIds } })
+        .sort({ createdAt: -1 })
+        .populate('user', 'fullName email referralCode')
+        .populate('plan', 'name amount')
+        .lean(),
+    ]);
+ 
+    // Add level info to each deposit
+    const l1DepositData = l1Deposits.map(d => ({
+      ...d,
+      referralLevel: 1,
+      referrerName: 'Direct Referral',
+    }));
+ 
+    const l2DepositData = l2Deposits.map(d => ({
+      ...d,
+      referralLevel: 2,
+      referrerName: 'Indirect Referral',
+    }));
+ 
+    // Combine and sort by date
+    const allDeposits = [...l1DepositData, ...l2DepositData]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(skip, skip + limit);
+ 
+    // Get totals
+    const [l1Total, l2Total, l1Count, l2Count] = await Promise.all([
+      Deposit.aggregate([
+        { $match: { user: { $in: l1UserIds } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      Deposit.aggregate([
+        { $match: { user: { $in: l2UserIds } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      Deposit.countDocuments({ user: { $in: l1UserIds } }),
+      Deposit.countDocuments({ user: { $in: l2UserIds } }),
+    ]);
+ 
+    const totalDeposits = l1Count + l2Count;
+ 
+    return successResponse(res, {
+      summary: {
+        totalTeamDeposits: totalDeposits,
+        l1DepositsCount:   l1Count,
+        l2DepositsCount:   l2Count,
+        l1DepositsTotal:   l1Total[0]?.total || 0,
+        l2DepositsTotal:   l2Total[0]?.total || 0,
+        l1L2DepositsTotal: (l1Total[0]?.total || 0) + (l2Total[0]?.total || 0),
+      },
+      deposits: allDeposits,
+      pagination: {
+        total: totalDeposits,
+        page,
+        limit,
+        pages: Math.ceil(totalDeposits / limit),
+      },
+    });
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+
 
 // ── ADMIN ──────────────────────────────────────────────────────
 

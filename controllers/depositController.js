@@ -6,6 +6,16 @@ const { createNotification, notifyAdmins } = require('../utils/notifications');
 const { sendEmail, emailTemplates } = require('../utils/email');
 const Plan = require('../models/Plan');
 
+const ReferralCommission = require('../models/ReferralCommission');
+const User = require('../models/User');
+
+
+// Referral commission rates
+const L1_RATE = 5; // Direct referrer
+const L2_RATE = 3; // Referrer's referrer
+ 
+
+
 // POST /api/deposits  (multipart/form-data)
 exports.createDeposit = async (req, res) => {
 
@@ -105,8 +115,7 @@ exports.approveDeposit = async (req, res) => {
 
 
   
-    console.log("deposit.plan", deposit.plan )
-
+ 
      const plan = await Plan.findById(deposit.plan);
 
     console.log("plan", plan)
@@ -128,15 +137,126 @@ exports.approveDeposit = async (req, res) => {
     await deposit.save();
 
     // Credit wallet
-    const user = await require('../models/User').findById(deposit.user).populate('wallet');
-    await creditWallet(Wallet, Transaction, user._id, user.wallet._id, totalCredit, 'deposit', `Deposit #${deposit._id} approved`);
+    // const User = await require('../models/User').findById(deposit.user).populate('wallet');
+    // await creditWallet(Wallet, Transaction, user._id, user.wallet._id, totalCredit, 'deposit', `Deposit #${deposit._id} approved`);
 
-    // Notify user
-    await createNotification(user._id, 'Deposit Approved', `Your deposit of ₹${totalCredit} has been approved.`, 'deposit_approved');
+    // // Notify user
+    // await createNotification(user._id, 'Deposit Approved', `Your deposit of ₹${totalCredit} has been approved.`, 'deposit_approved');
+
+
+    // try {
+    //   const tmpl = emailTemplates.depositApproved(user.fullName, totalCredit);
+    //   await sendEmail({ to: user.email, ...tmpl });
+    // } catch (e) { /* non-fatal */ }
+
+
+
+      // ── Credit investor's wallet ────────────────────────────
+    const investor = await User.findById(deposit.user).populate('wallet');
+    await creditWallet(Wallet, Transaction, investor._id, investor.wallet._id, totalCredit, 'deposit', `Deposit #${deposit._id} approved`);
+ 
+    // ── Notify investor ──────────────────────────────────────
+    await createNotification(investor._id, 'Deposit Approved', `Your deposit of ₹${totalCredit} has been approved.`, 'deposit_approved');
     try {
-      const tmpl = emailTemplates.depositApproved(user.fullName, totalCredit);
-      await sendEmail({ to: user.email, ...tmpl });
+      const tmpl = emailTemplates.depositApproved(investor.fullName, totalCredit);
+      await sendEmail({ to: investor.email, ...tmpl });
     } catch (e) { /* non-fatal */ }
+
+
+
+
+
+
+     // Get investor's referrer (Level 1)
+    const investorWithReferral = await User.findById(deposit.user);
+    
+    // Level 1: Direct referrer gets 5% of income
+    if (investorWithReferral.referredBy) {
+      const l1User = await User.findById(investorWithReferral.referredBy).populate('wallet');
+      if (l1User && l1User.wallet && !l1User.isBlocked && l1User.isActive) {
+        const l1Commission = Math.round((incomeAmount * L1_RATE) / 100 * 100) / 100;
+        
+        // Credit L1 wallet
+        await creditWallet(
+          Wallet,
+          Transaction,
+          l1User._id,
+          l1User.wallet._id,
+          l1Commission,
+          'referral_commission',
+          `L1 Referral Commission from ${investor.fullName} (${L1_RATE}% of ₹${incomeAmount})`
+        );
+ 
+        // Create ReferralCommission record
+        await ReferralCommission.create({
+          beneficiary: l1User._id,
+          fromUser: deposit.user,
+          deposit: deposit._id,
+          level: 1,
+          incomeAmount,
+          commissionRate: L1_RATE,
+          commissionAmount: l1Commission,
+          date: new Date(),
+          paid: true,
+          paidAt: new Date(),
+        });
+ 
+        // Notify L1 referrer
+        await createNotification(
+          l1User._id,
+          'Referral Commission Earned',
+          `You earned ₹${l1Commission} L1 referral commission from ${investor.fullName}'s deposit.`,
+          'referral_commission'
+        );
+ 
+        console.log(`L1 Commission: ${l1User.fullName} earned ₹${l1Commission}`);
+      }
+    }
+ 
+    // Level 2: Referrer's referrer gets 3% of income
+    if (investorWithReferral.referralLevel2By) {
+      const l2User = await User.findById(investorWithReferral.referralLevel2By).populate('wallet');
+      if (l2User && l2User.wallet && !l2User.isBlocked && l2User.isActive) {
+        const l2Commission = Math.round((incomeAmount * L2_RATE) / 100 * 100) / 100;
+        
+        // Credit L2 wallet
+        await creditWallet(
+          Wallet,
+          Transaction,
+          l2User._id,
+          l2User.wallet._id,
+          l2Commission,
+          'referral_commission',
+          `L2 Referral Commission from ${investor.fullName} (${L2_RATE}% of ₹${incomeAmount})`
+        );
+ 
+        // Create ReferralCommission record
+        await ReferralCommission.create({
+          beneficiary: l2User._id,
+          fromUser: deposit.user,
+          deposit: deposit._id,
+          level: 2,
+          incomeAmount,
+          commissionRate: L2_RATE,
+          commissionAmount: l2Commission,
+          date: new Date(),
+          paid: true,
+          paidAt: new Date(),
+        });
+ 
+        // Notify L2 referrer
+        await createNotification(
+          l2User._id,
+          'Referral Commission Earned',
+          `You earned ₹${l2Commission} L2 referral commission from ${investor.fullName}'s deposit.`,
+          'referral_commission'
+        );
+ 
+        console.log(`L2 Commission: ${l2User.fullName} earned ₹${l2Commission}`);
+      }
+    }
+
+
 
     return successResponse(res, null, 'Deposit approved and wallet credited.');
   } catch (err) {
