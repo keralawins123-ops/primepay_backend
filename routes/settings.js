@@ -11,6 +11,7 @@ const {
 const {
     getAppUpdate,
     updateAppUpdate,
+    getAdminAppUpdate,
 } = require("../controllers/appUpdateController");
 
 // Public
@@ -36,4 +37,12 @@ router.put(
   adminOnly,
   updateAppUpdate
 );
+
+router.get(
+  "/admin/app-update",
+  protect,
+  adminOnly,
+  getAdminAppUpdate
+);
+ 
 module.exports = router;

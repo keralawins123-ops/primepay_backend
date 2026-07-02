@@ -22,9 +22,10 @@ const appUpdateSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    apkUrl: {
+     s3Key: {
       type: String,
       required: true,
+      trim: true,
     },
     isEnabled: {
       type: Boolean,

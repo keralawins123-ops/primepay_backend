@@ -1,33 +1,70 @@
  const AppUpdate = require('../models/AppUpdate');
 
-exports.getAppUpdate = async (req, res) => {
+const { generateSignedApkUrl } = require('../utils/s3SignedUrl');
 
+exports.getAppUpdate = async (req, res) => {
+  try {
     const update = await AppUpdate.findOne().sort({ createdAt: -1 });
 
     if (!update) {
-        return res.status(404).json({
-            success: false,
-            message: "No update found"
-        });
+      return res.status(404).json({
+        success: false,
+        message: "No update found"
+      });
     }
 
-    res.json({
-        success: true,
-        data: update
+    let apkUrl = "";
+    if (update.s3Key) {
+      apkUrl = await generateSignedApkUrl(update.s3Key);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        _id: update._id,
+        latestVersion: update.latestVersion,
+        buildNumber: update.buildNumber,
+        mandatory: update.mandatory,
+        title: update.title,
+        message: update.message,
+        isEnabled: update.isEnabled,
+        releaseNotes: update.releaseNotes,
+        s3Key: update.s3Key,
+        apkUrl,  
+        createdAt: update.createdAt,
+        updatedAt: update.updatedAt
+      }
     });
-
-};
-
-exports.getAppUpdates = async (req, res) => {
-  try {
-    const s       = await getOrCreate();
-    const active  = s.contacts.filter(c => c.isActive);
-    return successResponse(res, active);
-  } catch (err) {
-    return errorResponse(res, err.message);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
+exports.getAdminAppUpdate = async (req, res) => {
+  try {
+    const update = await AppUpdate.findOne().sort({ createdAt: -1 });
+
+    if (!update) {
+      return res.json({
+        success: true,
+        data: null
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: update
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 
 exports.updateAppUpdate = async (req, res) => {
 
@@ -37,7 +74,7 @@ exports.updateAppUpdate = async (req, res) => {
         mandatory,
         title,
         message,
-        apkUrl,
+        s3Key,
         isEnabled,
         releaseNotes
     } = req.body;
@@ -52,7 +89,7 @@ exports.updateAppUpdate = async (req, res) => {
             mandatory,
             title,
             message,
-            apkUrl,
+            s3Key,
             isEnabled,
             releaseNotes
         });
@@ -64,7 +101,7 @@ exports.updateAppUpdate = async (req, res) => {
         update.mandatory = mandatory;
         update.title = title;
         update.message = message;
-        update.apkUrl = apkUrl;
+        update.s3Key = s3Key;
         update.isEnabled = isEnabled;
         update.releaseNotes = releaseNotes;
 
