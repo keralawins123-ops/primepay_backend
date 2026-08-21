@@ -9,7 +9,7 @@
 //     pass: process.env.EMAIL_PASS,
 //   },
 // });
-
+ 
 // const sendEmail = async ({ to, subject, html }) => {
 //   const mailOptions = {
 //     from: process.env.EMAIL_FROM,
