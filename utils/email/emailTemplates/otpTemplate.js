@@ -13,7 +13,7 @@ const generateOtpEmail = ({ otp }) => {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MDPay OTP</title>
+<title>Primepe OTP</title>
 </head>
 
 <body style="
@@ -42,7 +42,7 @@ const generateOtpEmail = ({ otp }) => {
   color:#00E89A;
   margin-bottom:10px;
 ">
-MDPay
+Primepe
 </div>
 
 <p style="
@@ -86,7 +86,7 @@ ${otp}
   font-size:14px;
   line-height:1.8;
 ">
-Use this OTP to securely log in to your MDPay account.
+Use this OTP to securely log in to your Primepe account.
 </p>
 
 <p style="

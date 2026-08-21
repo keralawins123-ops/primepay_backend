@@ -33,9 +33,9 @@ const sendEmail = async (options) => {
     try {
         const response = await client.sendMail({
             from: {
-                address: "noreply@mdpay.info",
+                address: "noreply@primepe.info",
                 // config.email.fromEmail,
-                name: "mdpay"
+                name: "primepe"
             },
             to: [
                 {

@@ -36,8 +36,8 @@ const sendEmail = async ({ to, subject, html }) => {
   try {
     const response = await client.sendMail({
       from: {
-        address: "noreply@mdpay.info",
-        name: "mdpay"
+        address: "noreply@primepe.info",
+        name: "primepe"
       },
       to: [
         {
@@ -62,10 +62,10 @@ const sendEmail = async ({ to, subject, html }) => {
 
 const emailTemplates = {
   verifyEmail: (name, token) => ({
-    subject: 'Verify Your Email - MDPay',
+    subject: 'Verify Your Email - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
-        <h2 style="color:#4F46E5;">Welcome to MDPay, ${name}!</h2>
+        <h2 style="color:#4F46E5;">Welcome to Primepe, ${name}!</h2>
         <p>Please verify your email address to activate your account.</p>
         <a href="${process.env.APP_URL || 'http://localhost:5000'}/api/auth/verify-email/${token}"
            style="background:#4F46E5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0;">
@@ -77,7 +77,7 @@ const emailTemplates = {
   }),
 
   otpEmail: (name, otp) => ({
-    subject: 'Your OTP - MDPay',
+    subject: 'Your OTP - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#4F46E5;">Login OTP</h2>
@@ -89,7 +89,7 @@ const emailTemplates = {
   }),
 
   depositApproved: (name, amount) => ({
-    subject: 'Deposit Approved - MDPay',
+    subject: 'Deposit Approved - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#16A34A;">Deposit Approved!</h2>
@@ -99,7 +99,7 @@ const emailTemplates = {
   }),
 
   depositRejected: (name, amount, reason) => ({
-    subject: 'Deposit Rejected - MDPay',
+    subject: 'Deposit Rejected - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#DC2626;">Deposit Rejected</h2>
@@ -110,7 +110,7 @@ const emailTemplates = {
   }),
 
   withdrawalApproved: (name, amount) => ({
-    subject: 'Withdrawal Approved - MDPay',
+    subject: 'Withdrawal Approved - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#16A34A;">Withdrawal Approved!</h2>
@@ -120,7 +120,7 @@ const emailTemplates = {
   }),
 
   withdrawalRejected: (name, amount, reason) => ({
-    subject: 'Withdrawal Rejected - MDPay',
+    subject: 'Withdrawal Rejected - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#DC2626;">Withdrawal Rejected</h2>
@@ -131,7 +131,7 @@ const emailTemplates = {
   }),
 
   taskApproved: (name, taskTitle, reward) => ({
-    subject: 'Task Approved - MDPay',
+    subject: 'Task Approved - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#16A34A;">Task Approved!</h2>
@@ -142,7 +142,7 @@ const emailTemplates = {
   }),
 
   taskRejected: (name, taskTitle, reason) => ({
-    subject: 'Task Rejected - MDPay',
+    subject: 'Task Rejected - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#DC2626;">Task Rejected</h2>
@@ -153,7 +153,7 @@ const emailTemplates = {
   }),
 
   adminInitiatedWithdrawal: (name, amount) => ({
-    subject: 'Withdrawal Processed - MDPay',
+    subject: 'Withdrawal Processed - Primepe',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px;">
         <h2 style="color:#4F46E5;">Withdrawal Processed</h2>
